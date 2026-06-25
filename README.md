@@ -1,2 +1,2 @@
 # Centralyse
-Centraleyes is an AI-powered GRC platform transforming digital risk and compliance management by automating labor-intensive processes traditionally performed by security and risk teams.
+Centraleyes is an AI-powered GRC platform transforming digital risk and compliance management by automating labor-intensive processes traditionally performed by security and risk teams. With its multidisciplinary, cutting-edge design, Centraleyes provides organizations unparalleled agility and precision, enabling proactive identification and mitigation of both cyber and compliance risks.
