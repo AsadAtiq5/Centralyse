@@ -1,12 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
+import dotenv from "dotenv";
+import path from "path";
+import { STORAGE_STATE_PATH } from "./utils/authPaths";
 
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
-// import dotenv from 'dotenv';
-// import path from 'path';
-// dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, ".env") });
+
+const isCI = !!process.env.CI;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -14,29 +17,62 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: !!process.env.CI,
+  forbidOnly: isCI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: isCI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: isCI ? 1 : undefined,
+  /* Per-test timeout. OTP retrieval via Mailinator can be slow, more so on CI. */
+  timeout: isCI ? 180_000 : 120_000,
+  expect: {
+    /* Bounded assertion timeout; generous on CI for slower runners. */
+    timeout: isCI ? 15_000 : 10_000,
+  },
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: "html",
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    // baseURL: 'http://localhost:3000',
+    baseURL: process.env.BASE_URL ?? "https://secure.cygovdev.com/",
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    /* Slower action/navigation budgets to absorb CI variability. */
+    actionTimeout: isCI ? 30_000 : 15_000,
+    navigationTimeout: isCI ? 60_000 : 30_000,
+
+    /* Capture artifacts to debug CI failures. */
     trace: "on-first-retry",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
   },
 
   /* Configure projects for major browsers */
   projects: [
+    /* Logs in once and saves storageState + sessionStorage. */
+    {
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+    },
+
+    /* Login-flow and other unauthenticated tests (start with a clean session). */
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      testIgnore: [/auth\.setup\.ts/, /.*\.auth\.spec\.ts/],
+    },
+
+    /* Authenticated flows: reuse the saved login so no re-login is needed.
+       Name spec files "<feature>.auth.spec.ts" and import `test` from
+       utils/authFixture.ts to also restore sessionStorage. */
+    {
+      name: "authenticated",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: STORAGE_STATE_PATH,
+      },
+      testMatch: /.*\.auth\.spec\.ts/,
+      dependencies: ["setup"],
     },
 
     // {
