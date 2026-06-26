@@ -34,6 +34,7 @@ pnpm-debug.log*
 !.vscode/settings.json
 .idea/
 *.swp
+.playwright-mcp/*
 
 # OS files
 .DS_Store
