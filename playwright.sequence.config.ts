@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 import path from "path";
+import { STORAGE_STATE_PATH } from "./utils/authPaths";
 
 /**
  * Sequential test configuration.
@@ -37,6 +38,28 @@ const sequentialProjects = SEQUENCE.map((file, index) => ({
   dependencies: index === 0 ? [] : [`step-${String(index).padStart(2, "0")}`],
 }));
 
+const lastStep = `step-${String(SEQUENCE.length).padStart(2, "0")}`;
+
+// After the login sequence completes, save the authenticated session
+// (storageState + sessionStorage), then run authenticated flows that reuse it.
+const sessionProjects = [
+  {
+    name: "setup",
+    testMatch: /auth\.setup\.ts/,
+    use: { ...devices["Desktop Chrome"] },
+    dependencies: [lastStep],
+  },
+  {
+    name: "authenticated",
+    testMatch: /.*\.auth\.spec\.ts/,
+    use: {
+      ...devices["Desktop Chrome"],
+      storageState: STORAGE_STATE_PATH,
+    },
+    dependencies: ["setup"],
+  },
+];
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
@@ -64,5 +87,5 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
-  projects: sequentialProjects,
+  projects: [...sequentialProjects, ...sessionProjects],
 });
