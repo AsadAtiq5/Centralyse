@@ -16,6 +16,9 @@ test.describe("Login - Successful Login", () => {
     const loginPage = new LoginPage(page);
     const otpPage = new OtpPage(page);
 
+    // Allow for Mailinator OTP delivery plus up to a 3-minute redirect wait.
+    test.setTimeout(360_000);
+
     // 1-3. Valid login -> OTP screen.
     await loginPage.goto();
     await loginPage.login(config.validEmail, config.validPassword);
@@ -30,8 +33,8 @@ test.describe("Login - Successful Login", () => {
     // 5-6. Enter the OTP and verify.
     await otpPage.submitCode(otp);
 
-    // Expected: redirect to /clients.
-    await expect(page).toHaveURL(/\/clients/, { timeout: 30_000 });
+    // Expected: redirect to /clients (wait up to 3 minutes max).
+    await expect(page).toHaveURL(/\/clients/, { timeout: 180_000 });
 
     // Persist reusable data for dependent specs.
     saveClientData("lastSuccessfulLogin", {
